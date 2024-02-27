@@ -64,21 +64,28 @@ def plot_heatmap_fmin():
 
 
 
-def bounded_linear_target_decision_function(fmin, n, r):
+def bounded_linear_target_decision_function(f_min, n, r, t=None, alpha=None, l=None):
     #This function takes an average report r and number of recommenders m,
     #then calculates the allocation based on these reports
 
     #0 Parameter settings
-    f_bar = (1+fmin)/2
-    t = .5
-    epsilon = (1-fmin)/2
-    alpha = epsilon
-    if n <= 25: l = np.sqrt(n) / .5
-    else: l = 10. 
+    f_bar = (1+f_min)/2
+    epsilon = (1-f_min)/2
+    if t==None: t = .5
+    if alpha==None: alpha = epsilon
+    if l==None:
+        if n <= 25: l = np.sqrt(n) / .5
+        else: l = 10. 
 
     #1 Allocation calculation
-    allocation = f_bar + np.clip(l*np.clip(r-t, -alpha, alpha),-epsilon, epsilon) #Assumes every individual report is equal to r.
-
+    allocation = f_bar + np.clip(l*(r-t),-epsilon, epsilon) #r is the average of the reports AFTER they have been clipped within alpha of t
+    '''
+    print('f_min', f_min)
+    print('n', n)
+    print('t', t)
+    print('alpha', alpha)
+    print('l', l)
+    '''
     return allocation
 
 def plot_decision_function_results():
@@ -90,7 +97,7 @@ def plot_decision_function_results():
     # Nested loops to calculate and plot results for each combination of n and fmin
     for n in n_values:
         for fmin in fmin_values:
-            allocations = [bounded_linear_target_decision_function(fmin, n, r) for r in r_values]
+            allocations = [bounded_linear_target_decision_function(fmin, n, r, t=.95) for r in r_values]
             plt.plot(r_values, allocations, label=f'n={n}, fmin={fmin}')
     
     # Setting the plot labels and legend
@@ -104,6 +111,6 @@ def plot_decision_function_results():
 # Execute the updated function to display the plot
 #plot_decision_function_results()
 
-plot_heatmap_fmin()
+#plot_heatmap_fmin()
 
 
