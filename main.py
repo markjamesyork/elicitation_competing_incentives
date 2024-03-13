@@ -76,17 +76,6 @@ def run_simulation(n, f_min, n_runs, mean_repayment_prob, borrower_a_plus_b, rec
         exp_recommender_payout += [n*calculate_exp_scores(reports, true_prob, budget, n)]
         cash_deployed += [action]
         exp_cash_repaid += [action * (1+interest_rate) * true_prob]
-        
-        '''
-        print('')
-        print('true_prob', true_prob)
-        #print('reports', reports)
-        print('aggregated_report', aggregated_report)
-        print('action ', action )
-        print('exp_recommender_payout', exp_recommender_payout[-1])
-        print('cash_deployed', cash_deployed[-1])
-        print('exp_cash_repaid', exp_cash_repaid[-1])
-        '''
 
     #3 Calculated Results
     total_cost = np.mean(exp_recommender_payout) + np.mean(cash_deployed)
@@ -96,11 +85,108 @@ def run_simulation(n, f_min, n_runs, mean_repayment_prob, borrower_a_plus_b, rec
     return np.mean(exp_recommender_payout), np.mean(cash_deployed), total_cost, profit, ROI, np.mean(exp_cash_repaid)
 
 
+def run_simulation_wrapper(args):
+    '''Function to run the simulation in parallel'''
+    i, prob, j, t_val, n, n_runs, mean_repayment_prob, borrower_a_plus_b, rec_a_plus_b = args
+    result = run_simulation(n, prob, n_runs, mean_repayment_prob, borrower_a_plus_b, rec_a_plus_b, t_val)
+    return i, j, result  # Assuming profit is the fourth element in the result
+
+
+def main():
+    # Calls the simulation for various parameter settings in parallel
+    n = 1000000
+    f_min = .05
+    n_runs = 50
+    mean_repayment_prob = .85
+    borrower_a_plus_b = 10
+    rec_a_plus_b = 18
+
+    # Generate grids for f_min and t
+    min_allocation_probabilities = np.arange(.02, 1., 0.02)
+    t_values = np.arange(.5, 1.0, .02)
+
+    # Prepare matrix to hold the required budget values
+    profit_matrix = np.zeros((len(min_allocation_probabilities), len(t_values)))
+    mean_rec_payout_matrix = profit_matrix.copy()
+    mean_cash_deployed_matrix = profit_matrix.copy()
+    ROI_matrix = profit_matrix.copy()
+    exp_cash_repaid_matrix = profit_matrix.copy()
+
+    start = dt.datetime.now()
+
+    # Create a list of all parameter combinations
+    task_args = [
+                (i, prob, j, t_val, n, n_runs, mean_repayment_prob, borrower_a_plus_b, rec_a_plus_b)
+                for i, prob in enumerate(min_allocation_probabilities)
+                for j, t_val in enumerate(t_values)
+                ]
+
+    with ProcessPoolExecutor() as executor:
+        future_to_params = {executor.submit(run_simulation_wrapper, args): args for args in task_args}
+
+        for future in as_completed(future_to_params):
+            i, j, result = future.result()
+            mean_rec_payout_matrix[i, j] = result[0]
+            mean_cash_deployed_matrix[i, j] = result[1]
+            profit_matrix[i, j] = result[3]
+            ROI_matrix[i, j] = result[4]
+            exp_cash_repaid_matrix[i, j] = result[5]
+
+    print('Time elapsed: ', dt.datetime.now() - start)
+
+    # Writing each array to its own CSV file
+    names = ['mean_rec_payout', 'mean_cash_deployed', 'profit', 'ROI', 'exp_cash_repaid']
+    arrays = [mean_rec_payout_matrix, mean_cash_deployed_matrix, profit_matrix, ROI_matrix, exp_cash_repaid_matrix]
+    for array, name in zip(arrays, names):
+        filename = f"csv_files/{name}_n{n}.csv"  # Constructs the file name
+        pd.DataFrame(array).to_csv(filename, index=False)  # Writes the array to a CSV file
+        print(f"Array {name} written to {filename}")  # Optional: prints confirmation
+
+
+    # Plotting with logarithmic color scale
+    variable = 'ROI'
+    plt.figure(figsize=(10, 8))
+    plt.imshow(locals()[variable + '_matrix'], cmap='viridis', aspect='auto', 
+    extent=[t_values.min(), t_values.max(), 
+                       min_allocation_probabilities.max(), min_allocation_probabilities.min()])
+               #norm=LogNorm())  # Apply logarithmic normalization
+    plt.colorbar(label=variable)
+    plt.title('%s Versus $f_{min}$ and $t$' % variable)
+    plt.xlabel('t')
+    plt.ylabel('Min Allocation Probability $f_{min}$')
+    plt.gca().invert_yaxis()  # Invert y-axis to have 0 start at the bottom
+    plt.savefig('charts/%s_n%d.png' % (variable, n))
+    #plt.show()
+    plt.close()
+
+# This check ensures that the following code runs only when the script is executed directly,
+# not when it's imported as a module in another script
+if __name__ == '__main__':
+    main()
+
+
+def run_simulation_vs_n():
+    '''This function calls the simulation for various values of n and charts the profit, total lent, etc'''
+    f_min = .3
+    t = .86
+    n_runs = 50
+    mean_repayment_prob = .85
+    borrower_a_plus_b = 10
+    rec_a_plus_b = 18
+    n_values = [10**i for i in np.range(7)]
+
+    for i in n_values:
+        results = run_simulation(n, f_min, n_runs, mean_repayment_prob, borrower_a_plus_b, rec_a_plus_b, t)
+
+
+###Out-of-use functions###
+##########################
+
 def chart_accuracy():
     # Parameters setup
     n_agents = 50
     n_runs = 10000
-    p = 0.6  # Mean of the true event probability; close to Uganda lending data
+    p = 0.85  # Mean of the true event probability; close to Uganda lending data
     repayment_prob_a_plus_b = 10   # Sum of coefficients a and b
     a = repayment_prob_a_plus_b * p
     b = repayment_prob_a_plus_b * (1 - p)
@@ -134,112 +220,6 @@ def chart_accuracy():
     plt.grid(True)  # Optional: adds a grid for easier reading
     plt.show()
 
-
-def run_simulation_wrapper(args):
-    '''Function to run the simulation in parallel'''
-    i, prob, j, t_val, n, n_runs, mean_repayment_prob, borrower_a_plus_b, rec_a_plus_b = args
-    result = run_simulation(n, prob, n_runs, mean_repayment_prob, borrower_a_plus_b, rec_a_plus_b, t_val)
-    return i, j, result  # Assuming profit is the fourth element in the result
+        
 
 
-def main():
-    #Simulation running loop
-    n = 1000000
-    f_min = .05
-    n_runs = 50
-    mean_repayment_prob = .85
-    borrower_a_plus_b = 10
-    rec_a_plus_b = 18
-    parallel = True
-
-    # Generate grids for f_min and t
-    min_allocation_probabilities = np.arange(.02, 1., 0.02)
-    t_values = np.arange(.5, 1.0, .02)
-
-    # Prepare matrix to hold the required budget values
-    profit_matrix = np.zeros((len(min_allocation_probabilities), len(t_values)))
-    mean_rec_payout_matrix = profit_matrix.copy()
-    mean_cash_deployed_matrix = profit_matrix.copy()
-    ROI_matrix = profit_matrix.copy()
-    exp_cash_repaid_matrix = profit_matrix.copy()
-
-    start = dt.datetime.now()
-
-    if parallel == False:
-        # Calculate required budget for each combination of min_allocation_probability and L
-        for i, prob in enumerate(min_allocation_probabilities):
-            print('f_min = %f' % prob)
-            for j, t_val in enumerate(t_values):
-                #print('t = %f' % t_val)
-                result = run_simulation(n, prob, n_runs, mean_repayment_prob, borrower_a_plus_b, rec_a_plus_b, t_val) #result = [mean_rec_payout, mean_cash_deployed, total_cost, profit, ROI, exp_cash_repaid]
-                mean_rec_payout_matrix[i, j] = result[0]
-                mean_cash_deployed_matrix[i, j] = result[1]
-                profit_matrix[i, j] = result[3]
-                ROI_matrix[i, j] = result[4]
-                exp_cash_repaid_matrix[i, j] = result[5]
-
-    elif parallel == True:
-        # Create a list of all parameter combinations
-        task_args = [
-                    (i, prob, j, t_val, n, n_runs, mean_repayment_prob, borrower_a_plus_b, rec_a_plus_b)
-                    for i, prob in enumerate(min_allocation_probabilities)
-                    for j, t_val in enumerate(t_values)
-                    ]
-
-        with ProcessPoolExecutor() as executor:
-            future_to_params = {executor.submit(run_simulation_wrapper, args): args for args in task_args}
-
-            for future in as_completed(future_to_params):
-                i, j, result = future.result()
-                mean_rec_payout_matrix[i, j] = result[0]
-                mean_cash_deployed_matrix[i, j] = result[1]
-                profit_matrix[i, j] = result[3]
-                ROI_matrix[i, j] = result[4]
-                exp_cash_repaid_matrix[i, j] = result[5]
-
-    print('Time elapsed: ', dt.datetime.now() - start)
-
-    # Writing each array to its own CSV file
-    names = ['mean_rec_payout', 'mean_cash_deployed', 'profit', 'ROI', 'exp_cash_repaid']
-    arrays = [mean_rec_payout_matrix, mean_cash_deployed_matrix, profit_matrix, ROI_matrix, exp_cash_repaid_matrix]
-    for array, name in zip(arrays, names):
-        filename = f"csv_files/{name}_n{n}.csv"  # Constructs the file name
-        pd.DataFrame(array).to_csv(filename, index=False)  # Writes the array to a CSV file
-        print(f"Array {name} written to {filename}")  # Optional: prints confirmation
-
-
-    # Plotting with logarithmic color scale
-    variable = 'ROI'
-    plt.figure(figsize=(10, 8))
-    plt.imshow(locals()[variable + '_matrix'], cmap='viridis', aspect='auto', 
-    extent=[t_values.min(), t_values.max(), 
-                       min_allocation_probabilities.max(), min_allocation_probabilities.min()])
-               #norm=LogNorm())  # Apply logarithmic normalization
-    plt.colorbar(label=variable)
-    plt.title('%s Versus $f_{min}$ and $t$' % variable)
-    plt.xlabel('t')
-    plt.ylabel('Min Allocation Probability $f_{min}$')
-    plt.gca().invert_yaxis()  # Invert y-axis to have 0 start at the bottom
-    plt.savefig('charts/%s_n%d.png' % (variable, n))
-    plt.show()
-    plt.close()
-
-# This check ensures that the following code runs only when the script is executed directly,
-# not when it's imported as a module in another script
-if __name__ == '__main__':
-    main()
-
-
-
-
-
-'''
-#Results Printing Statements
-mean_rec_payout, mean_cash_deployed, total_cost, profit, ROI, exp_cash_repaid = run_simulation(n, f_min, n_runs, mean_repayment_prob, borrower_a_plus_b, rec_a_plus_b, t)
-print('mean_rec_payout', np.round(mean_rec_payout,2 ))
-print('mean_cash_deployed', np.round(mean_cash_deployed,2 ))
-print('total_cost', np.round(total_cost,2 ))
-print('profit', np.round(profit,2 ))
-print('ROI', np.round(ROI,2 ))
-print('exp_cash_repaid', exp_cash_repaid)
-'''
