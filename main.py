@@ -150,24 +150,32 @@ def main():
             print(f"Array {name} written to {filename}")  # Optional: prints confirmation
 
 
-        # Plotting with logarithmic color scale
-        variable = 'ROI'
-        plt.figure(figsize=(10, 8))
-        plt.imshow(locals()[variable + '_matrix'], cmap='viridis', aspect='auto', 
-        extent=[t_values.min(), t_values.max(), 
-                           min_allocation_probabilities.max(), min_allocation_probabilities.min()])
-                   #norm=LogNorm())  # Apply logarithmic normalization
-        plt.colorbar(label=variable)
-        plt.title('%s Versus $f_{min}$ and $t$ when n = %d' % (variable, n))
-        plt.xlabel('t')
-        plt.ylabel('Min Allocation Probability $f_{min}$')
-        plt.gca().invert_yaxis()  # Invert y-axis to have 0 start at the bottom
-        plt.savefig('charts/%s_n%d.png' % (variable, n))
-        #plt.show()
-        plt.close()
+        # Plotting variables with logarithmic color scale
+        variables = ['ROI', 'profit']
+        for variable in variables:
+            plt.figure(figsize=(10, 8))
+            plt.imshow(locals()[variable + '_matrix'], cmap='viridis', aspect='auto', 
+            extent=[t_values.min(), t_values.max(), 
+                               min_allocation_probabilities.max(), min_allocation_probabilities.min()])
+                       #norm=LogNorm())  # Apply logarithmic normalization
+            plt.colorbar(label=variable)
+            plt.title('%s Versus $f_{min}$ and $t$ when n = %d' % (variable, n))
+            plt.xlabel('t')
+            plt.ylabel('Min Allocation Probability $f_{min}$')
+            plt.gca().invert_yaxis()  # Invert y-axis to have 0 start at the bottom
+            plt.savefig('charts/%s_n%d.png' % (variable, n))
+            #plt.show()
+            plt.close()
 
         print(f'n={n}: Time elapsed: ', dt.datetime.now() - start)
 
+        #Printing best profit fmin, t and value
+        print('max_profit_t', min_allocation_probabilities[max_profit_index[0]])
+        print('max_profit_fmin', t_values[max_profit_index[1]])
+        print('max_roi_t', min_allocation_probabilities[max_roi_index[0]])
+        print('max_roi_fmin', t_values[max_roi_index[1]])
+        print('best_profit_values', best_profit_values)
+        print('best_roi_values', best_roi_values)
 
 
     # Convert results to arrays for plotting
@@ -202,7 +210,7 @@ def chart_accuracy():
     repayment_prob_a_plus_b = 10   # Sum of coefficients a and b
     a = repayment_prob_a_plus_b * p
     b = repayment_prob_a_plus_b * (1 - p)
-    rec_accuracy_a_plus_b = 18 #Based on Uganda recommender distribution, assuming centered on mean repayment 
+    rec_accuracy_a_plus_b = 12.75 #Based on Uganda recommender distribution, assuming centered on mean repayment 
     scale = 1 # Scale of the quadratic score
     L = 2    # Maximum slope of the piecewise linear function
     c = 0.5  # Constant for action probability

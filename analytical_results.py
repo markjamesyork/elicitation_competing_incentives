@@ -9,7 +9,7 @@ def required_budget(f_min, n, l, alpha, briber_incentive):
 	return briber_incentive * 12 * alpha * l**2 / (f_min * n)
 
 def plot_heatmap_fmin():
-    # Generate grids for Min Allocation Probability and L
+    # Generate grids for Min Allocation Probability and n
     min_allocation_probabilities = np.arange(0, 1.01, 0.01)
     n_values = np.arange(1, 100001, 1)
     alpha_values = [(1-i)/2 for i in min_allocation_probabilities]
@@ -71,7 +71,7 @@ def bounded_linear_target_decision_function(f_min, n, r, t=None, alpha=None, l=N
     #0 Parameter settings
     f_bar = (1+f_min)/2
     epsilon = (1-f_min)/2
-    if t==None: t = .5
+    #if t==None: t = .5
     if alpha==None: alpha = epsilon
     if l==None:
         if n <= 25: l = np.sqrt(n) / .5
@@ -107,6 +107,35 @@ def plot_decision_function_results():
     plt.legend()
     plt.grid(True)
     plt.show()
+
+
+def chart_adaptive_payment_function():
+    # Define the range of x from 0 to 1
+    x = np.linspace(0, 1, 100)
+
+    # Define the functions
+    Gp = x**2/2 + 1
+    o1 = x - x**2 /2 + 1
+    o0 = -x**2 / 2 + 1
+
+    # Plotting the functions
+    plt.figure(figsize=(8,6))
+    plt.plot(x, Gp, label='G(p): expected under truthful reporting')
+    plt.plot(x, o1, label='o = 1')
+    plt.plot(x, o0, label='o = 0')
+    plt.title('Adaptive Payment Function - Expected Payout vs. Report')
+    plt.xlabel('Report $R_i$')
+    plt.ylabel('Expected Payout')
+    plt.legend()
+    plt.grid(True)
+    #plt.show()
+
+    # Save the chart as a .png file
+    plt.savefig('charts/adapay_chart.png')
+    #'/charts/adapay_chart.png'  # Return the path of the saved file
+    return
+
+chart_adaptive_payment_function()
 
 # Execute the updated function to display the plot
 #plot_decision_function_results()
