@@ -207,10 +207,10 @@ def chart_accuracy():
     n_agents = 50
     n_runs = 10000
     p = 0.85  # Mean of the true event probability; close to Uganda lending data
-    repayment_prob_a_plus_b = 10   # Sum of coefficients a and b
+    repayment_prob_a_plus_b = 9.8959   # Sum of coefficients a and b
     a = repayment_prob_a_plus_b * p
     b = repayment_prob_a_plus_b * (1 - p)
-    rec_accuracy_a_plus_b = 12.75 #Based on Uganda recommender distribution, assuming centered on mean repayment 
+    rec_accuracy_a_plus_b = 12.7418 #Based on Uganda recommender distribution, assuming centered on mean repayment 
     scale = 1 # Scale of the quadratic score
     L = 2    # Maximum slope of the piecewise linear function
     c = 0.5  # Constant for action probability
